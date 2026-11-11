@@ -80,7 +80,7 @@ def obtener_fuente_ajustada(texto, draw, max_ancho, tamaño_inicial=42):
     
     while tamaño > 6:
         try:
-            fuente = ImageFont.truetype("arial.ttf", tamaño)
+            fuente = ImageFont.truetype("arial.TTF", tamaño)
         except:
             # Si no encuentra arial.ttf, usa la fuente diminuta de emergencia
             return ImageFont.load_default()
