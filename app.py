@@ -1,0 +1,244 @@
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFont
+import io
+import csv
+import os
+import pandas as pd
+from datetime import datetime
+
+st.set_page_config(page_title="Registro Expo Autos ISISA 2026", page_icon="🏎️", layout="centered")
+
+st.title("Registro de Asistencia")
+st.subheader("Expo Autos ISISA 2026 - ESIME Zacatenco")
+st.markdown("Completa tus datos para generar y descargar tu gafete de acceso oficial.")
+
+ARCHIVO_PLANTILLA = "plantilla_gafete.PNG" 
+ARCHIVO_REGISTROS = "asistentes_registrados.csv"
+
+OPCIONES_INSTITUCION = [
+    "CECYT 1 \"Gonzalo Vázquez Vela\"",
+    "CECYT 2 \"Miguel Bernard Perales\"",
+    "CECYT 3 \"Estanislao Ramírez Ruiz\"",
+    "CECYT 4 \"Lázaro Cárdenas\"",
+    "CECYT 5 \"Benito Juárez García\"",
+    "CECYT 6 \"Miguel Othón de Mendizábal\"",
+    "CECYT 7 \"Cuauhtémoc\"",
+    "CECYT 8 \"Narciso Bassols García\"",
+    "CECYT 9 \"Juan de Dios Bátiz Paredes\"",
+    "CECYT 10 \"Carlos Vallejo Márquez\"",
+    "CECYT 11 \"Wilfrido Massieu\"",
+    "CECYT 12 \"José María Morelos y Pavón\"",
+    "CECYT 13 \"Ricardo Flores Magón\"",
+    "CECYT 14 \"Luis Enrique Erro Soler\"",
+    "CECYT 15 \"Diódoro Antúnez Echegaray\"",
+    "CECYT 16 \"Unidad Hidalgo\"",
+    "CECYT 17 \"Unidad Guanajuato\" (León)",
+    "CECYT 18 \"Unidad Zacatecas\"",
+    "CECYT 19 \"Leona Vicario\" (Tecámac)",
+    "CECYT 20 \"Natalia Serdán Alatriste\" (Puebla)",
+    "CET 1 \"Walter Cross Buchanan\"",
+    "CICS UMA - Centro Interdisciplinario de Ciencias de la Salud, Unidad Milpa Alta",
+    "CICS UST - Centro Interdisciplinario de Ciencias de la Salud, Unidad Santo Tomás",
+    "ENBA - Escuela Nacional de Biblioteconomía y Archivonomía",
+    "ENCB - Escuela Nacional de Ciencias Biológicas (Unidades Zacatenco y Santo Tomás)",
+    "ENMH - Escuela Nacional de Medicina y Homeopatía",
+    "ESCA Santo Tomás - Escuela Superior de Comercio y Administración, Unidad Santo Tomás",
+    "ESCA Tepepan - Escuela Superior de Comercio y Administración, Unidad Tepepan",
+    "ESCOM - Escuela Superior de Cómputo",
+    "ESE - Escuela Superior de Economía",
+    "ESEO - Escuela Superior de Enfermería y Obstetricia",
+    "ESFM - Escuela Superior de Física y Matemáticas",
+    "ESIA Tecamachalco - Escuela Superior de Ingeniería y Arquitectura, Unidad Tecamachalco",
+    "ESIA Ticomán - Escuela Superior de Ingeniería y Arquitectura, Unidad Ticomán",
+    "ESIA Zacatenco - Escuela Superior de Ingeniería y Arquitectura, Unidad Zacatenco",
+    "ESIME Azcapotzalco - Escuela Superior de Ingeniería Mecánica y Eléctrica, Unidad Azcapotzalco",
+    "ESIME Culhuacán - Escuela Superior de Ingeniería Mecánica y Eléctrica, Unidad Culhuacán",
+    "ESIME Ticomán - Escuela Superior de Ingeniería Mecánica y Eléctrica, Unidad Ticomán",
+    "ESIME Zacatenco - Escuela Superior de Ingeniería Mecánica y Eléctrica, Unidad Zacatenco",
+    "ESIQIE - Escuela Superior de Ingeniería Química e Industrias Extractivas",
+    "ESIT - Escuela Superior de Ingeniería Textil",
+    "ESM - Escuela Superior de Medicina",
+    "EST - Escuela Superior de Turismo",
+    "UPIBI - Unidad Profesional Interdisciplinaria de Biotecnología",
+    "UPIEM - Unidad Profesional Interdisciplinaria de Energía y Movilidad",
+    "UPIIAP - Unidad Profesional Interdisciplinaria de Ingeniería \"Ing. Alejo Peralta\" (Puebla)",
+    "UPIICSA - Unidad Profesional Interdisciplinaria de Ingeniería y Ciencias Sociales y Administrativas",
+    "UPIITA - Unidad Profesional Interdisciplinaria en Ingeniería y Tecnologías Avanzadas",
+    "UPIIC - Unidad Profesional Interdisciplinaria de Ingeniería Campus Coahuila",
+    "UPIIG - Unidad Profesional Interdisciplinaria de Ingeniería Campus Guanajuato",
+    "UPIIH - Unidad Profesional Interdisciplinaria de Ingeniería Campus Hidalgo",
+    "UPIIP - Unidad Profesional Interdisciplinaria de Ingeniería Campus Palenque",
+    "UPIIT - Unidad Profesional Interdisciplinaria de Ingeniería Campus Tlaxcala",
+    "UPIIZ - Unidad Profesional Interdisciplinaria de Ingeniería Campus Zacatecas",
+    "Público General",
+    "Otra (especificar)"
+]
+
+def obtener_fuente_ajustada(texto, draw, max_ancho, tamaño_inicial=42, negrita=True):
+    # Aseguramos que el tamaño inicial nunca sea menor a 10
+    tamaño = max(int(tamaño_inicial), 10) 
+    nombre_fuente = "arialbd.ttf" if negrita else "arial.ttf"
+    nombre_fallback = "DejaVuSans-Bold.ttf" if negrita else "DejaVuSans.ttf"
+    
+    # Creamos una variable por defecto para evitar el error
+    fuente = ImageFont.load_default()
+    
+    # Bajamos el límite a 6 para textos largos
+    while tamaño > 6: 
+        try:
+            fuente = ImageFont.truetype(nombre_fuente, tamaño)
+        except:
+            try:
+                fuente = ImageFont.truetype(nombre_fallback, tamaño)
+            except:
+                fuente = ImageFont.load_default()
+                return fuente
+        
+        bbox = draw.textbbox((0, 0), texto, font=fuente)
+        if (bbox[2] - bbox[0]) <= max_ancho:
+            return fuente
+        tamaño -= 2
+        
+    return fuente
+
+with st.form("form_registro", clear_on_submit=False):
+    col1, col2 = st.columns(2)
+    with col1:
+        nombre = st.text_input("Nombre(s):")
+    with col2:
+        apellidos = st.text_input("Apellidos:")
+        
+    correo = st.text_input("Correo electrónico:")
+    
+    col3, col4 = st.columns(2)
+    with col3:
+        opcion_inst = st.selectbox(
+            "Escuela / Procedencia:",
+            OPCIONES_INSTITUCION,
+            index=OPCIONES_INSTITUCION.index("ESIME Zacatenco - Escuela Superior de Ingeniería Mecánica y Eléctrica, Unidad Zacatenco")
+        )
+        otra_inst = st.text_input("Escribe tu institución (solo si elegiste 'Otra'):")
+    with col4:
+        tipo_asistente = st.selectbox("Tipo de Asistente:", ["Estudiante", "Visitante", "Expositor", "Docente", "Fotógrafo"])
+        
+    boton_registro = st.form_submit_button("Generar y Descargar Gafete", use_container_width=True)
+
+if boton_registro:
+    nombre_completo = f"{nombre.strip()} {apellidos.strip()}".strip()
+    institucion_final = otra_inst.strip() if opcion_inst == "Otra (especificar)" else opcion_inst
+    
+    if not nombre_completo or not correo.strip():
+        st.error("⚠️ Por favor completa tu nombre completo y correo electrónico.")
+    else:
+        # Lógica para Folio desde cero
+        numero_folio = 1
+        if os.path.exists(ARCHIVO_REGISTROS):
+            try:
+                df_existente = pd.read_csv(ARCHIVO_REGISTROS)
+                numero_folio = len(df_existente) + 1
+            except:
+                pass
+        
+        folio = f"ISISA-{numero_folio:04d}" # Genera ISISA-0001, ISISA-0002, etc.
+        
+        # Guardar en CSV
+        nuevo_registro = not os.path.exists(ARCHIVO_REGISTROS)
+        with open(ARCHIVO_REGISTROS, mode="a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if nuevo_registro:
+                writer.writerow(["Fecha", "Folio", "Nombre Completo", "Correo", "Institución", "Tipo"])
+            writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), folio, nombre_completo, correo, institucion_final, tipo_asistente])
+        
+        # Generar Gafete
+        img = Image.open(ARCHIVO_PLANTILLA).convert("RGB")
+        draw = ImageDraw.Draw(img)
+        ancho_img, alto_img = img.size
+        
+        y_caja_superior = int(alto_img * 0.72)
+        y_caja_inferior = int(alto_img * 0.93)
+        margen_x = int(ancho_img * 0.08)
+        ancho_disponible = (ancho_img - (margen_x * 2)) - 40
+        x_centro = ancho_img / 2
+        alto_caja = y_caja_inferior - y_caja_superior
+        
+        draw.rounded_rectangle([(margen_x, y_caja_superior), (ancho_img - margen_x, y_caja_inferior)], radius=15, fill="#FFFFFF")
+        
+        # Separar institución (Abreviatura y Nombre Completo)
+        if " - " in institucion_final:
+            partes = institucion_final.split(" - ", 1)
+            inst_abrev = partes[0].strip()
+            inst_full = partes[1].strip()
+        else:
+            inst_abrev = institucion_final
+            inst_full = ""
+            
+        fuente_nombre = obtener_fuente_ajustada(nombre_completo, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.024), negrita=True)
+        fuente_inst_abrev = obtener_fuente_ajustada(inst_abrev, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.018), negrita=True)
+        
+        try:
+            fuente_tipo = ImageFont.truetype("arialbd.ttf", int(alto_img * 0.016))
+            fuente_folio = ImageFont.truetype("arialbd.ttf", int(alto_img * 0.020))
+        except:
+            fuente_tipo = ImageFont.load_default()
+            fuente_folio = ImageFont.load_default()
+            
+        # Imprimir Textos en la imagen
+        draw.text((x_centro, y_caja_superior + int(alto_caja * 0.15)), nombre_completo, font=fuente_nombre, fill="#111111", anchor="mm")
+        draw.text((x_centro, y_caja_superior + int(alto_caja * 0.35)), inst_abrev, font=fuente_inst_abrev, fill="#444444", anchor="mm")
+        
+        if inst_full:
+            fuente_inst_full = obtener_fuente_ajustada(inst_full, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.012), negrita=False)
+            draw.text((x_centro, y_caja_superior + int(alto_caja * 0.48)), inst_full, font=fuente_inst_full, fill="#666666", anchor="mm")
+            
+        draw.text((x_centro, y_caja_superior + int(alto_caja * 0.68)), f"ROL: {tipo_asistente.upper()}", font=fuente_tipo, fill="#005A36", anchor="mm")
+        draw.text((x_centro, y_caja_superior + int(alto_caja * 0.85)), f"FOLIO: {folio}", font=fuente_folio, fill="#6B1D2F", anchor="mm")
+        
+        buffer_pdf = io.BytesIO()
+        img.save(buffer_pdf, format="PDF", resolution=100.0)
+        pdf_bytes = buffer_pdf.getvalue()
+        
+        st.success(f"¡Registro exitoso! Tu número de folio es **{folio}**.")
+        st.download_button(label="📥 DESCARGAR MI GAFETE EN PDF", data=pdf_bytes, file_name=f"Gafete_{folio}_{nombre.strip()}.pdf", mime="application/pdf", use_container_width=True)
+        st.image(img, caption="Vista previa de tu gafete de acceso", use_container_width=True)
+
+# Panel de Administrador Oculto
+# Panel de Administrador Oculto y Protegido con Contraseña
+st.markdown("---")
+with st.expander("Ver base de datos de asistentes (Solo Administradores)"):
+    # Pedir contraseña para mostrar los datos
+    password = st.text_input("Ingresa la contraseña de administrador para acceder:", type="password")
+    
+    # Cambia "Expo2026" por tu contraseña segura
+    if password == "Comite2026": 
+        if os.path.exists(ARCHIVO_REGISTROS):
+            df = pd.read_csv(ARCHIVO_REGISTROS)
+            
+            # --- NUEVA SECCIÓN DE CONTEO Y ESTADÍSTICAS ---
+            st.subheader("📊 Resumen de Registros")
+            
+            # 1. Muestra el total global en un número grande
+            st.metric(label="Total de Asistentes Registrados", value=len(df))
+            
+            # 2. Muestra cuántos hay de cada tipo (Visitante, Estudiante, etc.)
+            st.write("**Desglose por Tipo de Asistente:**")
+            conteo_roles = df["Tipo"].value_counts().reset_index()
+            conteo_roles.columns = ["Rol", "Cantidad"]
+            st.dataframe(conteo_roles, hide_index=True)
+            
+            st.markdown("---")
+            # ---------------------------------------------
+            
+            st.write("**Base de datos detallada:**")
+            st.dataframe(df, use_container_width=True)
+            
+            with open(ARCHIVO_REGISTROS, "rb") as file:
+                st.download_button(
+                    label="📥 Descargar Base de Datos completa (CSV)", 
+                    data=file, 
+                    file_name="Registro_ExpoAutos_ISISA.csv", 
+                    mime="text/csv"
+                )
+        else:
+            st.info("Aún no hay ningún asistente registrado.")
+    elif password != "":
+        st.error("Contraseña incorrecta.")
