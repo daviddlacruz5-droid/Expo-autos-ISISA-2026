@@ -104,10 +104,20 @@ with st.form("form_registro", clear_on_submit=False):
     
     col3, col4 = st.columns(2)
 with col3:
+        # Búsqueda segura del índice para evitar que la app colapse
+        try:
+            indice_esime = OPCIONES_INSTITUCION.index("ESIME Zacatenco - Escuela Superior de Ingeniería Mecánica y Eléctrica")
+        except ValueError:
+            try:
+                # Intenta buscar la versión anterior por si tu lista no se actualizó
+                indice_esime = OPCIONES_INSTITUCION.index("ESIME Zacatenco - Escuela Superior de Ingeniería Mecánica y Eléctrica, Unidad Zacatenco")
+            except ValueError:
+                # Si de plano no encuentra ninguna, selecciona la primera opción de la lista (índice 0)
+                indice_esime = 0      
         opcion_inst = st.selectbox(
             "Institución / Escuela / Procedencia:",
             OPCIONES_INSTITUCION,
-            index=OPCIONES_INSTITUCION.index("ESIME Zacatenco - Escuela Superior de Ingeniería Mecánica y Eléctrica")
+            index=indice_esime
         )
         otra_inst = st.text_input("Escribe tu institución (solo si elegiste 'Otra'):")
     with col4:
