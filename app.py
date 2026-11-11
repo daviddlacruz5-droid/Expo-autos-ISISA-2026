@@ -115,7 +115,7 @@ with st.form("form_registro", clear_on_submit=False):
         )
         otra_inst = st.text_input("Escribe tu institución (solo si elegiste 'Otra'):")
     with col4:
-        tipo_asistente = st.selectbox("Tipo de Asistente:", ["Visitante", "Estudiante", "Expositor", "Docente"])
+        tipo_asistente = st.selectbox("Tipo de Asistente:", ["Estudiante", "Visitante", "Expositor", "Docente"])
         
     boton_registro = st.form_submit_button("Generar y Descargar Gafete", use_container_width=True)
 
