@@ -9,7 +9,7 @@ import urllib.request  # <-- Nueva librería para descargar la fuente automátic
 
 st.set_page_config(page_title="Registro Expo Autos ISISA 2026", page_icon="🏎️", layout="centered")
 
-st.title("🏎️ Registro de Asistencia")
+st.title("Registro de Asistencia")
 st.subheader("Expo Autos ISISA 2026 - ESIME Zacatenco")
 st.markdown("Completa tus datos para generar y descargar tu gafete de acceso oficial.")
 
