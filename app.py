@@ -12,7 +12,7 @@ st.title("Registro de Asistencia")
 st.subheader("Expo Autos ISISA 2026 - ESIME Zacatenco")
 st.markdown("Completa tus datos para generar y descargar tu gafete de acceso oficial.")
 
-ARCHIVO_PLANTILLA = "plantilla_gafete.PNG" 
+ARCHIVO_PLANTILLA = "plantilla_gafete.png" 
 ARCHIVO_REGISTROS = "asistentes_registrados.csv"
 
 OPCIONES_INSTITUCION = [
