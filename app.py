@@ -74,33 +74,25 @@ OPCIONES_INSTITUCION = [
     "Otra (especificar)"
 ]
 
-def obtener_fuente_ajustada(texto, draw, max_ancho, tamaño_inicial=42, negrita=True):
-    # Aseguramos que el tamaño inicial nunca sea menor a 10
+# Función corregida para cargar la fuente custom y hacer las letras grandes
+def obtener_fuente_ajustada(texto, draw, max_ancho, tamaño_inicial=42):
     tamaño = max(int(tamaño_inicial), 10) 
-    nombre_fuente = "arialbd.ttf" if negrita else "arial.ttf"
-    nombre_fallback = "DejaVuSans-Bold.ttf" if negrita else "DejaVuSans.ttf"
     
-    # Creamos una variable por defecto para evitar el error
-    fuente = ImageFont.load_default()
-    
-    # Bajamos el límite a 6 para textos largos
-    while tamaño > 6: 
+    while tamaño > 6:
         try:
-            fuente = ImageFont.truetype(nombre_fuente, tamaño)
+            fuente = ImageFont.truetype("arial.ttf", tamaño)
         except:
-            try:
-                fuente = ImageFont.truetype(nombre_fallback, tamaño)
-            except:
-                fuente = ImageFont.load_default()
-                return fuente
+            # Si no encuentra arial.ttf, usa la fuente diminuta de emergencia
+            return ImageFont.load_default()
         
         bbox = draw.textbbox((0, 0), texto, font=fuente)
         if (bbox[2] - bbox[0]) <= max_ancho:
             return fuente
         tamaño -= 2
         
-    return fuente
+    return ImageFont.load_default()
 
+# Formulario
 with st.form("form_registro", clear_on_submit=False):
     col1, col2 = st.columns(2)
     with col1:
@@ -113,13 +105,13 @@ with st.form("form_registro", clear_on_submit=False):
     col3, col4 = st.columns(2)
     with col3:
         opcion_inst = st.selectbox(
-            "Escuela / Procedencia:",
+            "Institución / Escuela / Procedencia:",
             OPCIONES_INSTITUCION,
-            index=OPCIONES_INSTITUCION.index("ESIME Zacatenco - Escuela Superior de Ingeniería Mecánica y Eléctrica, Unidad Zacatenco")
+            index=OPCIONES_INSTITUCION.index("ESIME Zacatenco - Escuela Superior de Ingeniería Mecánica y Eléctrica")
         )
         otra_inst = st.text_input("Escribe tu institución (solo si elegiste 'Otra'):")
     with col4:
-        tipo_asistente = st.selectbox("Tipo de Asistente:", ["Estudiante", "Visitante", "Expositor", "Docente", "Fotógrafo"])
+        tipo_asistente = st.selectbox("Tipo de Asistente:", ["Visitante", "Estudiante", "Expositor", "Docente"])
         
     boton_registro = st.form_submit_button("Generar y Descargar Gafete", use_container_width=True)
 
@@ -130,7 +122,7 @@ if boton_registro:
     if not nombre_completo or not correo.strip():
         st.error("⚠️ Por favor completa tu nombre completo y correo electrónico.")
     else:
-        # Lógica para Folio desde cero
+        # Lógica para Folio desde cero leyendo el CSV
         numero_folio = 1
         if os.path.exists(ARCHIVO_REGISTROS):
             try:
@@ -139,9 +131,9 @@ if boton_registro:
             except:
                 pass
         
-        folio = f"ISISA-{numero_folio:04d}" # Genera ISISA-0001, ISISA-0002, etc.
+        folio = f"ISISA-{numero_folio:04d}" 
         
-        # Guardar en CSV
+        # Guardar en CSV temporal
         nuevo_registro = not os.path.exists(ARCHIVO_REGISTROS)
         with open(ARCHIVO_REGISTROS, mode="a", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
@@ -161,9 +153,10 @@ if boton_registro:
         x_centro = ancho_img / 2
         alto_caja = y_caja_inferior - y_caja_superior
         
+        # Dibujar caja blanca
         draw.rounded_rectangle([(margen_x, y_caja_superior), (ancho_img - margen_x, y_caja_inferior)], radius=15, fill="#FFFFFF")
         
-        # Separar institución (Abreviatura y Nombre Completo)
+        # Separar institución en dos renglones si contiene " - "
         if " - " in institucion_final:
             partes = institucion_final.split(" - ", 1)
             inst_abrev = partes[0].strip()
@@ -172,12 +165,13 @@ if boton_registro:
             inst_abrev = institucion_final
             inst_full = ""
             
-        fuente_nombre = obtener_fuente_ajustada(nombre_completo, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.024), negrita=True)
-        fuente_inst_abrev = obtener_fuente_ajustada(inst_abrev, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.018), negrita=True)
+        # --- NUEVOS MULTIPLICADORES DE TAMAÑO PARA TEXTOS GRANDES ---
+        fuente_nombre = obtener_fuente_ajustada(nombre_completo, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.045))
+        fuente_inst_abrev = obtener_fuente_ajustada(inst_abrev, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.035))
         
         try:
-            fuente_tipo = ImageFont.truetype("arialbd.ttf", int(alto_img * 0.016))
-            fuente_folio = ImageFont.truetype("arialbd.ttf", int(alto_img * 0.020))
+            fuente_tipo = ImageFont.truetype("arial.ttf", int(alto_img * 0.025))
+            fuente_folio = ImageFont.truetype("arial.ttf", int(alto_img * 0.030))
         except:
             fuente_tipo = ImageFont.load_default()
             fuente_folio = ImageFont.load_default()
@@ -187,21 +181,26 @@ if boton_registro:
         draw.text((x_centro, y_caja_superior + int(alto_caja * 0.35)), inst_abrev, font=fuente_inst_abrev, fill="#444444", anchor="mm")
         
         if inst_full:
-            fuente_inst_full = obtener_fuente_ajustada(inst_full, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.012), negrita=False)
+            fuente_inst_full = obtener_fuente_ajustada(inst_full, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.018))
             draw.text((x_centro, y_caja_superior + int(alto_caja * 0.48)), inst_full, font=fuente_inst_full, fill="#666666", anchor="mm")
             
         draw.text((x_centro, y_caja_superior + int(alto_caja * 0.68)), f"ROL: {tipo_asistente.upper()}", font=fuente_tipo, fill="#005A36", anchor="mm")
         draw.text((x_centro, y_caja_superior + int(alto_caja * 0.85)), f"FOLIO: {folio}", font=fuente_folio, fill="#6B1D2F", anchor="mm")
         
+        # Guardar como PDF en memoria
         buffer_pdf = io.BytesIO()
         img.save(buffer_pdf, format="PDF", resolution=100.0)
         pdf_bytes = buffer_pdf.getvalue()
         
         st.success(f"¡Registro exitoso! Tu número de folio es **{folio}**.")
-        st.download_button(label="📥 DESCARGAR MI GAFETE EN PDF", data=pdf_bytes, file_name=f"Gafete_{folio}_{nombre.strip()}.pdf", mime="application/pdf", use_container_width=True)
+        st.download_button(label="📥 DESCARGAR MI GAFETE EN PDF", data=pdf_bytes, file_name=f"Gafete_{folio}.pdf", mime="application/pdf", use_container_width=True)
         st.image(img, caption="Vista previa de tu gafete de acceso", use_container_width=True)
 
 # Panel de Administrador Oculto
+st.markdown("---")
+with st.expander("Ver base de datos de asistentes (Solo Administradores)"):
+    # Pedir contraseña para mostrar los datos
+    password = st.text_input("Ingresa la contraseña de administrador para acceder:", type="password")
 # Panel de Administrador Oculto y Protegido con Contraseña
 st.markdown("---")
 with st.expander("Ver base de datos de asistentes (Solo Administradores)"):
