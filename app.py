@@ -84,22 +84,29 @@ def obtener_fuente_ajustada(texto, draw, max_ancho, tamaño_inicial=42, negrita=
     fuente = ImageFont.load_default()
     
     # Bajamos el límite a 6 para textos largos
-    while tamaño > 6: 
-        try:
-            fuente = ImageFont.truetype(nombre_fuente, tamaño)
-        except:
+    def obtener_fuente_ajustada(texto, draw, max_ancho, tamaño_inicial=42):
+    tamaño = max(int(tamaño_inicial), 10) 
+    # Lista de fuentes comunes en Windows y en los servidores Linux de Streamlit
+    fuentes_a_intentar = ["arial.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf", "FreeSans.ttf"]
+    
+    while tamaño > 6:
+        fuente_cargada = None
+        for nombre_fuente in fuentes_a_intentar:
             try:
-                fuente = ImageFont.truetype(nombre_fallback, tamaño)
+                fuente_cargada = ImageFont.truetype(nombre_fuente, tamaño)
+                break # Si encuentra una, deja de buscar
             except:
-                fuente = ImageFont.load_default()
-                return fuente
-        
-        bbox = draw.textbbox((0, 0), texto, font=fuente)
+                continue
+                
+        if not fuente_cargada:
+            return ImageFont.load_default() # Fallback extremo
+            
+        bbox = draw.textbbox((0, 0), texto, font=fuente_cargada)
         if (bbox[2] - bbox[0]) <= max_ancho:
-            return fuente
+            return fuente_cargada
         tamaño -= 2
         
-    return fuente
+    return ImageFont.load_default()
 
 with st.form("form_registro", clear_on_submit=False):
     col1, col2 = st.columns(2)
@@ -172,27 +179,33 @@ if boton_registro:
             inst_abrev = institucion_final
             inst_full = ""
             
-        fuente_nombre = obtener_fuente_ajustada(nombre_completo, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.024), negrita=True)
-        fuente_inst_abrev = obtener_fuente_ajustada(inst_abrev, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.018), negrita=True)
+       # --- MULTIPLICADORES DE TAMAÑO GIGANTES ---
+        fuente_nombre = obtener_fuente_ajustada(nombre_completo, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.050))
+        fuente_inst_abrev = obtener_fuente_ajustada(inst_abrev, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.040))
         
-        try:
-            fuente_tipo = ImageFont.truetype("arialbd.ttf", int(alto_img * 0.016))
-            fuente_folio = ImageFont.truetype("arialbd.ttf", int(alto_img * 0.020))
-        except:
-            fuente_tipo = ImageFont.load_default()
-            fuente_folio = ImageFont.load_default()
+        # Función rápida para cargar la fuente de Rol y Folio
+        def cargar_fuente_estatica(tam):
+            for f in ["arial.ttf", "DejaVuSans-Bold.ttf", "DejaVuSans.ttf", "LiberationSans-Regular.ttf"]:
+                try:
+                    return ImageFont.truetype(f, tam)
+                except:
+                    continue
+            return ImageFont.load_default()
+
+        fuente_tipo = cargar_fuente_estatica(int(alto_img * 0.025))
+        fuente_folio = cargar_fuente_estatica(int(alto_img * 0.035))
             
-        # Imprimir Textos en la imagen
+        # Imprimir Textos en la imagen (Coordenadas ajustadas)
         draw.text((x_centro, y_caja_superior + int(alto_caja * 0.15)), nombre_completo, font=fuente_nombre, fill="#111111", anchor="mm")
         draw.text((x_centro, y_caja_superior + int(alto_caja * 0.35)), inst_abrev, font=fuente_inst_abrev, fill="#444444", anchor="mm")
         
         if inst_full:
-            fuente_inst_full = obtener_fuente_ajustada(inst_full, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.012), negrita=False)
-            draw.text((x_centro, y_caja_superior + int(alto_caja * 0.48)), inst_full, font=fuente_inst_full, fill="#666666", anchor="mm")
+            # Letra más pequeña para el nombre completo de la escuela para que quepa en un renglón
+            fuente_inst_full = obtener_fuente_ajustada(inst_full, draw, ancho_disponible, tamaño_inicial=int(alto_img * 0.016))
+            draw.text((x_centro, y_caja_superior + int(alto_caja * 0.50)), inst_full, font=fuente_inst_full, fill="#666666", anchor="mm")
             
-        draw.text((x_centro, y_caja_superior + int(alto_caja * 0.68)), f"ROL: {tipo_asistente.upper()}", font=fuente_tipo, fill="#005A36", anchor="mm")
+        draw.text((x_centro, y_caja_superior + int(alto_caja * 0.70)), f"ROL: {tipo_asistente.upper()}", font=fuente_tipo, fill="#005A36", anchor="mm")
         draw.text((x_centro, y_caja_superior + int(alto_caja * 0.85)), f"FOLIO: {folio}", font=fuente_folio, fill="#6B1D2F", anchor="mm")
-        
         buffer_pdf = io.BytesIO()
         img.save(buffer_pdf, format="PDF", resolution=100.0)
         pdf_bytes = buffer_pdf.getvalue()
