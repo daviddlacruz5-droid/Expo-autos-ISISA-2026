@@ -103,7 +103,7 @@ with st.form("form_registro", clear_on_submit=False):
     correo = st.text_input("Correo electrónico:")
     
     col3, col4 = st.columns(2)
-    with col3:
+with col3:
         opcion_inst = st.selectbox(
             "Institución / Escuela / Procedencia:",
             OPCIONES_INSTITUCION,
